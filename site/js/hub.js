@@ -84,14 +84,14 @@ export function render(el) {
           <div class="field"><label for="range" class="sr-only" style="position:absolute;left:-9999px">Year range</label>
             <select id="range" aria-label="Year range"><option value="5">Last 5 years</option><option value="10" selected>Last 10 years</option><option value="20">Last 20 years</option><option value="0">All years</option></select></div></div>
         <div class="chart-box"><canvas id="trend" role="img" aria-label="Quarterly rice yield, actual and predicted"></canvas></div>
-        <div class="legend"><span><i></i>Actual (PSA)</span><span><i class="dash"></i>Predicted</span><span><i class="band"></i>Low-high range (future)</span></div>
+        <div class="legend"><span><i></i>Actual (PSA)</span><span><i class="dash"></i>Predicted</span><span><i class="band"></i>80% forecast range from past errors (future)</span></div>
       </article>
       <div class="grid">
         <article class="card reveal" data-tilt>
           <h2>Latest Prediction</h2>
           <span class="pill pred">${nextLabel} · forecast</span>
           <p class="result-num"><span data-count="${toUnit(next.pred)}" data-dec="${unitDec()}">0</span><small>${unitLabel()}</small></p>
-          <p class="note">Range ${fmtYield(next.low)} to ${fmtYield(next.high)} ${unitLabel()} · typical error ±${fmtYield(info.typical_error_h1)} ${unitLabel()}</p>
+          <p class="note">80% forecast range from past errors: ${fmtYield(next.low)} to ${fmtYield(next.high)} ${unitLabel()} · typical error (test MAE) ±${fmtYield(info.typical_error_h1)} ${unitLabel()}</p>
           <p style="margin-top:14px"><a class="btn sm" href="#/task?y=${next.year}&q=${next.q}">Open in AgriTask</a></p>
         </article>
         <article class="card reveal" data-tilt>

@@ -1,21 +1,32 @@
-"""Step 1: read the two PSA CSV files and turn them into one tidy table.
+"""Step 1: verify, then read the two PSA CSV files into one tidy table.
 
-Output columns: year, period, crop, production_t, area_ha, yield_t_ha, is_preliminary
+Output columns: year, period, crop, production_t, area_ha, yield_t_ha, yield_status, is_preliminary
+NULL (NaN here) is never replaced by 0, interpolated or forward filled.
 """
+import hashlib
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
+import verify as verify_mod
+
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
-PROVINCE = "....Pampanga"            # PSA writes sub-regions with leading dots
-CROPS = ["Palay", "Irrigated Palay", "Rainfed Palay"]
+CROPS = verify_mod.PALAY
 PERIODS = ["Q1", "Q2", "S1", "Q3", "Q4", "S2", "Annual"]
-FILES = {                            # label shown in the app -> file name pattern
-    "Production CSV": "*Volume of Production*.csv",
-    "Area Harvested CSV": "*Area Harvested*.csv",
+FILES = {                            # measure -> file name pattern
+    "production": "*Volume of Production*.csv",
+    "area": "*Area Harvested*.csv",
 }
+# Reproducibility facts about the PSA tables (PSA OpenStat, CC BY 4.0). Not stored inside the CSVs.
+PSA_TABLES = {
+    "production": {"table_code": "0012E4EVCP0",
+                   "url": "https://openstat.psa.gov.ph/PXWeb/pxweb/en/DB/DB__2E__CS/0012E4EVCP0.px/"},
+    "area": {"table_code": "0022E4EAHC0",
+             "url": "https://openstat.psa.gov.ph/PXWeb/pxweb/en/DB/DB__2E__CS/0022E4EAHC0.px"},
+}
+PSA_LAST_UPDATED = "2026-07-29"      # "Jul. 29, 2026" on both tables
 
 
 def find_file(pattern):
@@ -26,97 +37,89 @@ def find_file(pattern):
     return matches[0]
 
 
-def read_one(path, value_name):
-    """Read one PSA file and return a long table for Pampanga only."""
-    # Row 1 is a title, row 2 is the header. utf-8-sig removes the BOM.
-    # na_values=".." turns "not available" into NaN (never zero).
-    raw = pd.read_csv(path, skiprows=1, encoding="utf-8-sig", na_values=[".."])
-    total_rows = len(raw)
-    raw.columns = ["crop", "place"] + list(raw.columns[2:])
-    raw = raw[(raw["place"] == PROVINCE) & (raw["crop"].isin(CROPS))]
-    long = raw.melt(id_vars=["crop", "place"], var_name="label", value_name=value_name)
-    # "1987 Quarter 1" -> year 1987, period Q1 ; "1987 Annual" -> Annual
-    parts = long["label"].str.split(" ", n=1, expand=True)
-    long["year"] = parts[0].astype(int)
-    long["period"] = (parts[1].str.replace("Quarter ", "Q").str.replace("Semester ", "S"))
-    return long[["year", "period", "crop", value_name]], total_rows
+def sha256_of(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def yield_and_status(prod, area, flagged):
+    """yield = production / area only when production is present and area > 0."""
+    if prod is None:
+        return None, "production_missing"
+    if area is None:
+        return None, "area_missing"
+    if area == 0:
+        return None, "area_zero"
+    if flagged:
+        return None, "inconsistent"
+    return prod / area, "ok"
 
 
 def load_all():
-    """Return (table, files_info, report_lines)."""
-    report = []
-    prod_path, area_path = find_file(FILES["Production CSV"]), find_file(FILES["Area Harvested CSV"])
-    prod, prod_rows = read_one(prod_path, "production_t")
-    area, area_rows = read_one(area_path, "area_ha")
-    files_info = {"Production CSV": (prod_path.name, prod_rows),
-                  "Area Harvested CSV": (area_path.name, area_rows)}
+    """Return (table, files_info, report_lines, verification). Stops the build if verification fails."""
+    paths = {m: find_file(p) for m, p in FILES.items()}
+    ver = verify_mod.verify(paths["production"], paths["area"])
+    report_path = verify_mod.write_report(ver)
+    if not ver.ok:
+        print("\n".join(ver.lines))
+        raise SystemExit(f"\nBUILD STOPPED: verification failed. Report written to {report_path}")
 
-    df = prod.merge(area, on=["year", "period", "crop"], how="outer")
-    # Yield = production / area, per period (annual yield is annual / annual).
-    area_ok = df["area_ha"].where(df["area_ha"] > 0)
-    df["yield_t_ha"] = df["production_t"] / area_ok
-    df.loc[df["production_t"].isna() | area_ok.isna(), "yield_t_ha"] = np.nan
+    files_info = {}
+    for m, p in paths.items():
+        files_info[m] = dict(measure=m, path=p, file_name=p.name, sha256=sha256_of(p),
+                             size=p.stat().st_size, data_rows=ver.data_rows[m],
+                             period_columns=ver.period_columns[m], title=ver.titles[m],
+                             psa_last_updated=PSA_LAST_UPDATED, **PSA_TABLES[m])
 
-    # Latest year that has any published number is still preliminary.
-    last_year = int(df.loc[df["production_t"].notna(), "year"].max())
-    df["is_preliminary"] = (df["year"] == last_year).astype(int)
+    years = sorted({k[2] for k in ver.records})
+    rows = []
+    for crop in CROPS:
+        for year in years:
+            for period in PERIODS:
+                p = ver.records[("production", crop, year, period)]
+                a = ver.records[("area", crop, year, period)]
+                flagged = ((crop, year, period) in ver.flagged_yield
+                           or (crop, year, period) in ver.inconsistent)
+                y, status = yield_and_status(p, a, flagged)
+                rows.append((year, period, crop, p, a, y, status))
+    df = pd.DataFrame(rows, columns=["year", "period", "crop", "production_t", "area_ha",
+                                     "yield_t_ha", "yield_status"])
+    for col in ["production_t", "area_ha", "yield_t_ha"]:
+        df[col] = df[col].astype(float)          # None -> NaN, never 0
+
+    # The latest published quarter is preliminary, and so is the semester that contains it.
+    pal = df[(df["crop"] == "Palay") & df["period"].isin(["Q1", "Q2", "Q3", "Q4"]) & df["production_t"].notna()]
+    last_year = int(pal["year"].max())
+    last_q = int(pal[pal["year"] == last_year]["period"].str[1].astype(int).max())
+    prelim_periods = {f"Q{last_q}", "S1" if last_q <= 2 else "S2"}
+    df["is_preliminary"] = ((df["year"] == last_year) & df["period"].isin(prelim_periods)
+                            & df["production_t"].notna()).astype(int)
 
     df["period"] = pd.Categorical(df["period"], PERIODS, ordered=True)
     df = df.sort_values(["crop", "year", "period"]).reset_index(drop=True)
     df["period"] = df["period"].astype(str)
 
-    report += make_report(df, files_info, last_year)
-    return df, files_info, report
+    report = list(ver.lines) + [""] + make_report(df, files_info, last_year, last_q)
+    return df, files_info, report, ver
 
 
-def make_report(df, files_info, last_year):
+def make_report(df, files_info, last_year, last_q):
     lines = ["== LOAD REPORT =="]
-    for label, (name, rows) in files_info.items():
-        lines.append(f"{label}: {name} ({rows} data rows)")
-
-    palay = df[df["crop"] == "Palay"]
-    q = palay[palay["period"].isin(["Q1", "Q2", "Q3", "Q4"])]
-    have = q["production_t"].notna().sum()
-    lines.append(f"Pampanga Palay quarterly production values: {have} of {len(q)} "
-                 f"(rest are '..' = not available)")
-
-    # Check 1: four quarters must add up to the PSA Annual column.
-    # Check 2: S1 = Q1+Q2 and S2 = Q3+Q4 (needed for the semester donut).
-    mismatches = 0
-    for crop in CROPS:
-        for col in ["production_t", "area_ha"]:
-            wide = df[df["crop"] == crop].pivot(index="year", columns="period", values=col)
-            for year, r in wide.iterrows():
-                for name, parts in [("Annual", ["Q1", "Q2", "Q3", "Q4"]),
-                                    ("S1", ["Q1", "Q2"]), ("S2", ["Q3", "Q4"])]:
-                    if r[parts].isna().any() or pd.isna(r[name]):
-                        continue
-                    if abs(r[parts].sum() - r[name]) > 1.0:   # PSA rounds to whole units
-                        mismatches += 1
-                        lines.append(f"  MISMATCH {crop} {col} {year} {name}: "
-                                     f"parts={r[parts].sum():.2f} PSA={r[name]:.2f}")
-    lines.append(f"Quarter-sum vs PSA Annual/Semester mismatches (tolerance 1.0): {mismatches}")
-
-    ann = palay[(palay["period"] == "Annual")].set_index("year")["production_t"]
-    lines.append(f"Check value: Pampanga Palay 2025 annual production = {ann.get(2025):,.2f} t "
-                 f"(expected 418,908.75)")
-    lines.append(f"Annual production: 1987 = {ann.get(1987):,.0f} t, "
-                 f"peak {ann.idxmax()} = {ann.max():,.0f} t, 2025 = {ann.get(2025):,.0f} t")
-
-    # Quarter shares of the year, 2015-2025 average
-    w = q[(q["year"] >= 2015) & (q["year"] <= 2025)].pivot(index="year", columns="period", values="production_t")
-    share = (w.div(w.sum(axis=1), axis=0).mean() * 100).round(1)
-    lines.append("Average share of yearly output 2015-2025: " +
-                 ", ".join(f"{k} {v}%" for k, v in share.items()))
-
-    latest = q[q["production_t"].notna()].iloc[-1]
-    lines.append(f"Latest published quarter: {int(latest['year'])} {latest['period']} (preliminary)")
-    rainfed = df[(df["crop"] == "Rainfed Palay") & (df["period"] == "Annual") & (df["year"] >= 2020)]
-    lines.append(f"Rainfed Palay annual production 2020+: {rainfed['production_t'].fillna(-1).tolist()} "
-                 "(zero/NaN: split not used for features)")
+    for m, f in files_info.items():
+        lines.append(f"{m}: {f['file_name']}  {f['size']:,} bytes, {f['data_rows']} data rows, "
+                     f"{f['period_columns']} period columns, SHA-256 {f['sha256']}")
+    counts = df.groupby(["crop", "yield_status"]).size().unstack(fill_value=0)
+    lines.append("Yield status counts per crop (all periods):")
+    lines += ["  " + l for l in counts.to_string().splitlines()]
+    q = df[(df["crop"] == "Palay") & df["period"].isin(["Q1", "Q2", "Q3", "Q4"])]
+    lines.append(f"Pampanga Palay quarters with a defined yield: {int(q['yield_t_ha'].notna().sum())} of {len(q)}")
+    ann = df[(df["crop"] == "Palay") & (df["period"] == "Annual")].set_index("year")
+    y25 = ann.loc[2025]
+    lines.append(f"Check value: Palay 2025 annual production = {y25['production_t']:,.2f} t, "
+                 f"area = {y25['area_ha']:,.2f} ha, yield = {y25['yield_t_ha']:.3f} t/ha")
+    lines.append(f"Latest published quarter: {last_year} Q{last_q} (preliminary, history only, never scored)")
     return lines
 
 
 if __name__ == "__main__":
-    table, _, rep = load_all()
-    print("\n".join(rep))
+    table, _, rep, _ = load_all()
+    print("\n".join(rep[-14:]))
