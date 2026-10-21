@@ -24,19 +24,25 @@ export function render(el, ctx) {
   const start = valid ? valid : firstFuture;
 
   const files = Q.dataFiles();
-  const badges = ['Production CSV', 'Area Harvested CSV'].map((name) => {
-    const f = files.find((x) => x.name === name);
-    return f && f.rows_loaded > 0
-      ? `<span class="badge">${name}: Loaded (${fmtNum(f.rows_loaded)} rows)</span>`
-      : `<span class="badge missing">${name}: Missing</span>`;
-  }).join('');
+  const badges = files.map((f) =>
+    `<span class="badge" title="SHA-256 ${f.sha256}">${f.name}: ${f.table_code} · SHA-256 ${f.sha256.slice(0, 12)}…</span>`).join('');
 
-  const metrics = Q.metrics();
-  const metricRows = metrics.map((m) => `<tr class="${m.is_selected ? 'sel' : ''}"><td>${m.model}${m.is_baseline ? ' <span class="pill">baseline</span>' : ''}${m.is_selected ? ' <span class="pill pred">selected</span>' : ''}</td>
-    <td class="num">${fmtYield(m.mae)}</td><td class="num">${fmtYield(m.rmse)}</td><td class="num">${fmtNum(m.mape, 1)}%</td></tr>`).join('');
+  // Test-period scores (2019 Q1 - 2026 Q1) by horizon, plus skill = 1 - MAE_model / MAE_baseline.
+  const test = Q.metrics().filter((m) => m.split === 'test');
+  const models = [...new Set(test.map((m) => m.model))];
+  const cell = (model, h) => test.find((m) => m.model === model && m.horizon === h);
+  const metricRows = models.map((model) => {
+    const first = test.find((m) => m.model === model);
+    const tds = [1, 2, 3, 4].map((h) => {
+      const m = cell(model, h), b = cell('Seasonal naive', h);
+      const skill = model === 'Seasonal naive' ? '' : ` <span class="note">(${fmtNum((1 - m.mae / b.mae) * 100, 1)}%)</span>`;
+      return `<td class="num">${fmtYield(m.mae)}${skill}</td>`;
+    }).join('');
+    return `<tr class="${first.is_displayed ? 'sel' : ''}"><td>${model}${model === 'Seasonal naive' ? ' <span class="pill">baseline</span>' : ''}${first.is_displayed ? ' <span class="pill pred">shown</span>' : ''}</td>${tds}</tr>`;
+  }).join('');
   const verdict = info.beats_baseline
-    ? `${info.model_name} beats the seasonal-naive baseline on time-based validation, so it is used.`
-    : 'Neither Ridge nor Random Forest beat the seasonal-naive baseline (same quarter last year) on time-based validation, so the baseline is used.';
+    ? `${info.model_name} beats the seasonal-naive baseline on the test period, so it is used.`
+    : `${info.chosen_model} was chosen on validation but does not beat the seasonal-naive baseline (same quarter last year) on the test period, so the baseline is used for the forecasts shown.`;
 
   el.innerHTML = `<div class="view">
     <div><h1 class="page-title">Forecast Pampanga Rice Yield</h1>
@@ -73,8 +79,8 @@ export function render(el, ctx) {
 
     <section class="card reveal" aria-labelledby="cmpT">
       <h2 id="cmpT">Model comparison</h2>
-      <p class="note" style="margin-bottom:10px">Rolling-origin validation over horizons 1 to 4 quarters (time-based, no random split). Errors in ${unitLabel()}.</p>
-      <div style="overflow-x:auto"><table><thead><tr><th>Model</th><th class="num">MAE</th><th class="num">RMSE</th><th class="num">MAPE</th></tr></thead><tbody>${metricRows}</tbody></table></div>
+      <p class="note" style="margin-bottom:10px">Test period 2019 Q1 to 2026 Q1, rolling origin, MAE in ${unitLabel()} for forecasts 1 to 4 quarters ahead. In brackets: skill = 1 - MAE of the model / MAE of the baseline (negative = worse than the baseline).</p>
+      <div style="overflow-x:auto"><table><thead><tr><th>Model</th><th class="num">1 quarter</th><th class="num">2 quarters</th><th class="num">3 quarters</th><th class="num">4 quarters</th></tr></thead><tbody>${metricRows}</tbody></table></div>
       <p class="note" style="margin-top:12px">${verdict}</p>
     </section>
   </div>`;
@@ -134,7 +140,7 @@ export function render(el, ctx) {
     const err = info[`typical_error_h${row.horizon}`];
     const past = row.kind === 'backtest';
     const fact = (k, v) => `<div class="fact"><div class="k">${k}</div><div class="v">${v}</div></div>`;
-    let facts = fact('Range (low-high)', `${fmtYield(row.low)} - ${fmtYield(row.high)}`);
+    let facts = fact('80% forecast range from past errors', `${fmtYield(row.low)} - ${fmtYield(row.high)}`);
     if (past) {
       const diff = pct(row.pred, row.actual);
       const prelim = row.year === info.latest_year && row.q === info.latest_quarter;
@@ -143,14 +149,14 @@ export function render(el, ctx) {
     } else {
       facts += fact('Horizon', `${row.horizon} quarter${row.horizon > 1 ? 's' : ''} ahead`);
     }
-    facts += fact('Typical error', `±${fmtYield(err)} ${unitLabel()}`) + fact('Model', info.model_name);
+    facts += fact('Typical error (test MAE)', `±${fmtYield(err)} ${unitLabel()}`) + fact('Model', row.model_name);
 
     resultBox.innerHTML = `<span class="pill ${past ? '' : 'pred'}">${qLabel(row.year, row.q)} · ${past ? 'past quarter (backtest)' : 'forecast'}</span>
       <p class="result-num"><span id="big">0</span><small>${unitLabel()}</small></p>
       <p class="note">${past ? 'What the model predicted one quarter ahead, next to the real value.' : 'Predicted yield for Pampanga palay.'}</p>
       <div class="facts">${facts}</div>
       <div class="chart-box sm"><canvas id="mini" role="img" aria-label="Recent yields and this prediction"></canvas></div>
-      <div class="legend"><span><i></i>Actual (PSA)</span><span><i class="dash"></i>Predicted</span><span><i class="band"></i>Low-high</span></div>`;
+      <div class="legend"><span><i></i>Actual (PSA)</span><span><i class="dash"></i>Predicted</span><span><i class="band"></i>80% forecast range</span></div>`;
     countUp($('#big'), toUnit(row.pred), unitDec(), 1000);
 
     const key = qKey(row.year, row.q);

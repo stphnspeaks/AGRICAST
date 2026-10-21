@@ -40,9 +40,22 @@ export const Q = {
     return info;
   },
 
-  dataFiles: () => rows('SELECT name, rows_loaded, loaded_at FROM data_files ORDER BY name DESC'),
+  // The two PSA files behind the displayed dataset version (name shown in the app, table code, hash)
+  dataFiles: () => rows(
+    `SELECT 'Production CSV' AS name, f.table_code, f.sha256, f.psa_last_updated
+       FROM dataset_versions v JOIN source_files f ON f.file_id = v.production_file_id
+      WHERE v.dsv_id = (SELECT dsv_id FROM displayed_run)
+     UNION ALL
+     SELECT 'Area Harvested CSV', f.table_code, f.sha256, f.psa_last_updated
+       FROM dataset_versions v JOIN source_files f ON f.file_id = v.area_file_id
+      WHERE v.dsv_id = (SELECT dsv_id FROM displayed_run)`),
 
-  metrics: () => rows('SELECT model, mae, rmse, mape, is_baseline, is_selected FROM model_metrics ORDER BY is_baseline DESC, mae'),
+  // Validation and test scores of every deployed model, one row per model/split/horizon
+  metrics: () => rows(
+    `SELECT r.run_id, r.model_name AS model, r.params, m.split, m.horizon, m.mae, m.rmse, m.mape, m.coverage, m.mean_width,
+            (r.run_id = (SELECT run_id FROM displayed_run)) AS is_displayed
+       FROM model_metrics m JOIN model_runs r ON r.run_id = m.run_id
+      WHERE r.is_deployed = 1 ORDER BY r.model_name = 'Seasonal naive' DESC, r.model_name, m.split, m.horizon`),
 
   // Data Records stat card: every PSA value we hold (not "..")
   recordCount: () => rows('SELECT COUNT(*) AS n FROM psa_quarterly WHERE production_t IS NOT NULL')[0].n,
@@ -77,19 +90,36 @@ export const Q = {
   unavailable: (crop) => rows(
     `SELECT year, period FROM psa_quarterly WHERE crop = ? AND production_t IS NULL ORDER BY year, period`, [crop]),
 
-  forecasts: (crop) => rows(
-    `SELECT kind, target_year AS year, target_quarter AS q, horizon, predicted_yield AS pred, low, high,
-            actual_yield AS actual FROM forecasts WHERE crop = ? ORDER BY target_year, target_quarter`, [crop]),
+  // Forecasts of the displayed run. validation/test rows are the 1-quarter-ahead backtest ('backtest'),
+  // future rows are the next four quarters. Only Palay is modelled, so crop is not a column.
+  forecasts: () => rows(
+    `SELECT f.forecast_id, CASE f.kind WHEN 'future' THEN 'future' ELSE 'backtest' END AS kind, f.kind AS split,
+            f.target_year AS year, f.target_quarter AS q, f.horizon, f.predicted AS pred, f.low, f.high,
+            f.actual_yield AS actual
+       FROM forecasts f WHERE f.run_id = (SELECT run_id FROM displayed_run) AND (f.kind = 'future' OR f.horizon = 1)
+      ORDER BY f.target_year, f.target_quarter, f.horizon`),
 
   forecastOne: (crop, year, q) => rows(
-    `SELECT kind, target_year AS year, target_quarter AS q, horizon, predicted_yield AS pred, low, high,
-            actual_yield AS actual, model_version FROM forecasts
-      WHERE crop = ? AND target_year = ? AND target_quarter = ?`, [crop, year, q])[0] || null,
+    `SELECT f.forecast_id, CASE f.kind WHEN 'future' THEN 'future' ELSE 'backtest' END AS kind, f.kind AS split,
+            f.target_year AS year, f.target_quarter AS q, f.horizon, f.predicted AS pred, f.low, f.high,
+            f.actual_yield AS actual, r.model_name, r.run_id
+       FROM forecasts f JOIN model_runs r ON r.run_id = f.run_id
+      WHERE f.run_id = (SELECT run_id FROM displayed_run) AND f.target_year = ? AND f.target_quarter = ?
+        AND (f.kind = 'future' OR f.horizon = 1)`, [year, q])[0] || null,
+
+  // Traceability: runs, forecasts of a run, and the full trace of one forecast
+  runs: () => rows(
+    `SELECT run_id, model_name, dsv_id, trained_at, is_deployed FROM model_runs ORDER BY run_id DESC`),
+  runForecasts: (runId) => rows(
+    `SELECT forecast_id, kind, target_year, target_quarter, horizon FROM forecasts WHERE run_id = ?
+      ORDER BY kind, target_year, target_quarter, horizon`, [runId]),
+  trace: (forecastId) => rows('SELECT * FROM forecast_trace WHERE forecast_id = ?', [forecastId])[0] || null,
 
   crops: () => rows("SELECT DISTINCT crop FROM psa_quarterly WHERE crop = 'Palay'").map((r) => r.crop),
 
-  // For the CSV download in AgriTune
+  // For the CSV download in AgriTune: every forecast of every stored run
   forecastsCsvRows: () => rows(
-    `SELECT crop, kind, target_year, target_quarter, horizon, predicted_yield, low, high, actual_yield, model_version
-       FROM forecasts ORDER BY target_year, target_quarter`),
+    `SELECT f.forecast_id, f.run_id, r.model_name, r.dsv_id, f.kind, f.origin_year, f.origin_quarter, f.target_year,
+            f.target_quarter, f.horizon, f.predicted, f.low, f.high, f.actual_yield
+       FROM forecasts f JOIN model_runs r ON r.run_id = f.run_id ORDER BY f.run_id, f.kind, f.target_year, f.target_quarter, f.horizon`),
 };

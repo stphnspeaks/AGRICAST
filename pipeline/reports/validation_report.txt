@@ -1,0 +1,56 @@
+== VALIDATION REPORT (area harvested + production) ==
+production: Palay and Corn- Volume of Production in Metric Tons by Ecosystem-Croptype, Quarter, Semester, Region and Province, 1987-2026.csv
+  title: Palay and Corn: Volume of Production in Metric Tons by Ecosystem/Croptype, Quarter, Semester, Region and Province, 1987-2026
+  data rows: 654, period columns: 280
+area: Palay and Corn- Area Harvested in Hectares by Ecosystem-Croptype, Quarter, Semester, Region and Province, 1987-2026.csv
+  title: Palay and Corn: Area Harvested in Hectares by Ecosystem/Croptype, Quarter, Semester, Region and Province, 1987-2026
+  data rows: 654, period columns: 280
+
+[1] Province label '....Pampanga' occurs exactly once per croptype row
+  production Corn             1 row  [ok]
+  production Irrigated Palay  1 row  [ok]
+  production Palay            1 row  [ok]
+  production Rainfed Palay    1 row  [ok]
+  production White Corn       1 row  [ok]
+  production Yellow Corn      1 row  [ok]
+  area       Corn             1 row  [ok]
+  area       Irrigated Palay  1 row  [ok]
+  area       Palay            1 row  [ok]
+  area       Rainfed Palay    1 row  [ok]
+  area       White Corn       1 row  [ok]
+  area       Yellow Corn      1 row  [ok]
+
+[2] Period columns have the same names and order in both files
+  identical: 280 columns, 1987 Quarter 1 ... 2026 Annual  [ok]
+  every column follows 'YYYY Quarter 1, Quarter 2, Semester 1, Quarter 3, Quarter 4, Semester 2, Annual'  [ok]
+  positions of '..' in the production file (column number, 1-based among period columns):
+    Irrigated Palay    4 x '..'  columns 277-280  (first: 2026 Quarter 3)
+    Rainfed Palay      4 x '..'  columns 277-280  (first: 2026 Quarter 3)
+    Palay              4 x '..'  columns 277-280  (first: 2026 Quarter 3)
+    whole file: 17253 '..' cells in 654 rows x 280 columns
+  positions of '..' in the area file (column number, 1-based among period columns):
+    Irrigated Palay    4 x '..'  columns 277-280  (first: 2026 Quarter 3)
+    Rainfed Palay      4 x '..'  columns 277-280  (first: 2026 Quarter 3)
+    Palay              4 x '..'  columns 277-280  (first: 2026 Quarter 3)
+    whole file: 17262 '..' cells in 654 rows x 280 columns
+
+[3] Palay, Irrigated Palay and Rainfed Palay exist in both files with identical labels
+  'Palay': present in both  [ok]
+  'Irrigated Palay': present in both  [ok]
+  'Rainfed Palay': present in both  [ok]
+
+[4] Units (from the PSA table titles)
+  production: expected 'Volume of Production in Metric Tons' -> found  [ok]
+  area: expected 'Area Harvested in Hectares' -> found  [ok]
+
+[5] Internal consistency (tolerance 0.05)
+  1260 sum checks run, 0 outside tolerance  [ok]
+
+[6] Production and area both present or both missing
+  840 records, 12 missing in both, 0 with only one measure
+
+[7] Implied yield outside 0.5 to 8.0 t/ha (flagged, never dropped silently)
+  0 records with area > 0 flagged -> yield_status 'inconsistent', yield stored as NULL, kept in observations
+  132 records with area = 0 (yield_status 'area_zero'): Rainfed Palay 1987 Q3, Rainfed Palay 1988 Q2, Rainfed Palay 1988 Q3, Rainfed Palay 1989 Q2, Rainfed Palay 1989 Q3, Rainfed Palay 1990 Q1, Rainfed Palay 1990 Q2, Rainfed Palay 1990 S1 ...
+
+RESULT: ALL CHECKS PASSED

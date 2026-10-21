@@ -1,0 +1,153 @@
+== VALIDATION REPORT (area harvested + production) ==
+production: Palay and Corn- Volume of Production in Metric Tons by Ecosystem-Croptype, Quarter, Semester, Region and Province, 1987-2026.csv
+  title: Palay and Corn: Volume of Production in Metric Tons by Ecosystem/Croptype, Quarter, Semester, Region and Province, 1987-2026
+  data rows: 654, period columns: 280
+area: Palay and Corn- Area Harvested in Hectares by Ecosystem-Croptype, Quarter, Semester, Region and Province, 1987-2026.csv
+  title: Palay and Corn: Area Harvested in Hectares by Ecosystem/Croptype, Quarter, Semester, Region and Province, 1987-2026
+  data rows: 654, period columns: 280
+
+[1] Province label '....Pampanga' occurs exactly once per croptype row
+  production Corn             1 row  [ok]
+  production Irrigated Palay  1 row  [ok]
+  production Palay            1 row  [ok]
+  production Rainfed Palay    1 row  [ok]
+  production White Corn       1 row  [ok]
+  production Yellow Corn      1 row  [ok]
+  area       Corn             1 row  [ok]
+  area       Irrigated Palay  1 row  [ok]
+  area       Palay            1 row  [ok]
+  area       Rainfed Palay    1 row  [ok]
+  area       White Corn       1 row  [ok]
+  area       Yellow Corn      1 row  [ok]
+
+[2] Period columns have the same names and order in both files
+  identical: 280 columns, 1987 Quarter 1 ... 2026 Annual  [ok]
+  every column follows 'YYYY Quarter 1, Quarter 2, Semester 1, Quarter 3, Quarter 4, Semester 2, Annual'  [ok]
+  positions of '..' in the production file (column number, 1-based among period columns):
+    Irrigated Palay    4 x '..'  columns 277-280  (first: 2026 Quarter 3)
+    Rainfed Palay      4 x '..'  columns 277-280  (first: 2026 Quarter 3)
+    Palay              4 x '..'  columns 277-280  (first: 2026 Quarter 3)
+    whole file: 17253 '..' cells in 654 rows x 280 columns
+  positions of '..' in the area file (column number, 1-based among period columns):
+    Irrigated Palay    4 x '..'  columns 277-280  (first: 2026 Quarter 3)
+    Rainfed Palay      4 x '..'  columns 277-280  (first: 2026 Quarter 3)
+    Palay              4 x '..'  columns 277-280  (first: 2026 Quarter 3)
+    whole file: 17262 '..' cells in 654 rows x 280 columns
+
+[3] Palay, Irrigated Palay and Rainfed Palay exist in both files with identical labels
+  'Palay': present in both  [ok]
+  'Irrigated Palay': present in both  [ok]
+  'Rainfed Palay': present in both  [ok]
+
+[4] Units (from the PSA table titles)
+  production: expected 'Volume of Production in Metric Tons' -> found  [ok]
+  area: expected 'Area Harvested in Hectares' -> found  [ok]
+
+[5] Internal consistency (tolerance 0.05)
+  1260 sum checks run, 0 outside tolerance  [ok]
+
+[6] Production and area both present or both missing
+  840 records, 12 missing in both, 0 with only one measure
+
+[7] Implied yield outside 0.5 to 8.0 t/ha (flagged, never dropped silently)
+  0 records with area > 0 flagged -> yield_status 'inconsistent', yield stored as NULL, kept in observations
+  132 records with area = 0 (yield_status 'area_zero'): Rainfed Palay 1987 Q3, Rainfed Palay 1988 Q2, Rainfed Palay 1988 Q3, Rainfed Palay 1989 Q2, Rainfed Palay 1989 Q3, Rainfed Palay 1990 Q1, Rainfed Palay 1990 Q2, Rainfed Palay 1990 S1 ...
+
+RESULT: ALL CHECKS PASSED
+
+== LOAD REPORT ==
+production: Palay and Corn- Volume of Production in Metric Tons by Ecosystem-Croptype, Quarter, Semester, Region and Province, 1987-2026.csv  1,428,988 bytes, 654 data rows, 280 period columns, SHA-256 64c7fa55c5eb07fc0dcc18ff839f93aee3c393b74cd37ed55d7d939379b96b3a
+area: Palay and Corn- Area Harvested in Hectares by Ecosystem-Croptype, Quarter, Semester, Region and Province, 1987-2026.csv  1,376,686 bytes, 654 data rows, 280 period columns, SHA-256 e294c79f82e2ae2cd99b9cd18ba6baca8f18262090768d8762d3560dd07dee99
+Yield status counts per crop (all periods):
+  yield_status     area_zero   ok  production_missing
+  crop                                               
+  Irrigated Palay          0  276                   4
+  Palay                    0  276                   4
+  Rainfed Palay          132  144                   4
+Pampanga Palay quarters with a defined yield: 158 of 160
+Check value: Palay 2025 annual production = 418,908.75 t, area = 89,802.00 ha, yield = 4.665 t/ha
+Latest published quarter: 2026 Q2 (preliminary, history only, never scored)
+
+== TRAINING REPORT ==
+Series 1987 Q1 to 2026 Q2: 158 quarters with a defined yield of 158 on the calendar
+Train 1987 Q1-2011 Q4 (initial, expanding) | validation 2012 Q1-2018 Q4 (28 targets) | test 2019 Q1-2026 Q1 (29 targets) | 2026 Q2 preliminary: history only
+  Tuning Ridge on validation (5 settings):
+    Ridge {'alpha': 0.01}  validation mean MAE 0.1726
+    Ridge {'alpha': 0.1}  validation mean MAE 0.1723
+    Ridge {'alpha': 1}  validation mean MAE 0.1692
+    Ridge {'alpha': 10}  validation mean MAE 0.1507
+    Ridge {'alpha': 100}  validation mean MAE 0.1736
+  -> Ridge: {'alpha': 10}, validation mean MAE 0.1507
+  Tuning Random Forest on validation (18 settings):
+    Random Forest {'n_estimators': 200, 'max_depth': 3, 'min_samples_leaf': 1}  validation mean MAE 0.1212
+    Random Forest {'n_estimators': 200, 'max_depth': 3, 'min_samples_leaf': 3}  validation mean MAE 0.1244
+    Random Forest {'n_estimators': 200, 'max_depth': 3, 'min_samples_leaf': 5}  validation mean MAE 0.1236
+    Random Forest {'n_estimators': 200, 'max_depth': 5, 'min_samples_leaf': 1}  validation mean MAE 0.1289
+    Random Forest {'n_estimators': 200, 'max_depth': 5, 'min_samples_leaf': 3}  validation mean MAE 0.1322
+    Random Forest {'n_estimators': 200, 'max_depth': 5, 'min_samples_leaf': 5}  validation mean MAE 0.1261
+    Random Forest {'n_estimators': 200, 'max_depth': None, 'min_samples_leaf': 1}  validation mean MAE 0.1324
+    Random Forest {'n_estimators': 200, 'max_depth': None, 'min_samples_leaf': 3}  validation mean MAE 0.1330
+    Random Forest {'n_estimators': 200, 'max_depth': None, 'min_samples_leaf': 5}  validation mean MAE 0.1261
+    Random Forest {'n_estimators': 500, 'max_depth': 3, 'min_samples_leaf': 1}  validation mean MAE 0.1226
+    Random Forest {'n_estimators': 500, 'max_depth': 3, 'min_samples_leaf': 3}  validation mean MAE 0.1230
+    Random Forest {'n_estimators': 500, 'max_depth': 3, 'min_samples_leaf': 5}  validation mean MAE 0.1223
+    Random Forest {'n_estimators': 500, 'max_depth': 5, 'min_samples_leaf': 1}  validation mean MAE 0.1324
+    Random Forest {'n_estimators': 500, 'max_depth': 5, 'min_samples_leaf': 3}  validation mean MAE 0.1320
+    Random Forest {'n_estimators': 500, 'max_depth': 5, 'min_samples_leaf': 5}  validation mean MAE 0.1262
+    Random Forest {'n_estimators': 500, 'max_depth': None, 'min_samples_leaf': 1}  validation mean MAE 0.1366
+    Random Forest {'n_estimators': 500, 'max_depth': None, 'min_samples_leaf': 3}  validation mean MAE 0.1328
+    Random Forest {'n_estimators': 500, 'max_depth': None, 'min_samples_leaf': 5}  validation mean MAE 0.1263
+  -> Random Forest: {'n_estimators': 200, 'max_depth': 3, 'min_samples_leaf': 1}, validation mean MAE 0.1212
+  Seasonal naive validation mean MAE 0.1357
+
+== TEST RESULTS (2019 Q1 - 2026 Q1, 29 targets per horizon) ==
+model             h     MAE    RMSE  MAPE %   skill
+Seasonal naive    1  0.1866  0.2563    3.95        
+Seasonal naive    2  0.1866  0.2563    3.95        
+Seasonal naive    3  0.1866  0.2563    3.95        
+Seasonal naive    4  0.1866  0.2563    3.95        
+Seasonal naive   mean MAE over h1-4: validation 0.1357, test 0.1866
+Ridge             1  0.2005  0.2665    4.21  -0.075
+Ridge             2  0.2137  0.2697    4.52  -0.146
+Ridge             3  0.1968  0.2614    4.21  -0.055
+Ridge             4  0.1936  0.2557    4.13  -0.038
+Ridge            mean MAE over h1-4: validation 0.1507, test 0.2012
+Random Forest     1  0.2405  0.2985    5.00  -0.289
+Random Forest     2  0.2379  0.2936    4.95  -0.275
+Random Forest     3  0.2341  0.2897    4.87  -0.255
+Random Forest     4  0.2364  0.2914    4.91  -0.267
+Random Forest    mean MAE over h1-4: validation 0.1212, test 0.2372
+
+== 80% FORECAST RANGE (10th-90th percentile of the 28 validation errors) on TEST ==
+model             h  coverage  mean width      q10      q90
+Seasonal naive    1     65.5%      0.3607  -0.1518  +0.2089
+Seasonal naive    2     65.5%      0.3607  -0.1518  +0.2089
+Seasonal naive    3     65.5%      0.3607  -0.1518  +0.2089
+Seasonal naive    4     65.5%      0.3607  -0.1518  +0.2089
+Ridge             1     65.5%      0.4972  -0.2615  +0.2357
+Ridge             2     69.0%      0.4979  -0.2644  +0.2335
+Ridge             3     65.5%      0.4332  -0.2395  +0.1937
+Ridge             4     65.5%      0.4203  -0.2482  +0.1720
+Random Forest     1     37.9%      0.3470  -0.1575  +0.1895
+Random Forest     2     41.4%      0.3550  -0.1591  +0.1960
+Random Forest     3     44.8%      0.3613  -0.1635  +0.1978
+Random Forest     4     48.3%      0.3803  -0.1771  +0.2032
+
+Chosen on validation: Random Forest {'n_estimators': 200, 'max_depth': 3, 'min_samples_leaf': 1} (validation mean MAE 0.1212; seasonal naive 0.1357)
+Test: Random Forest does NOT beat the seasonal-naive baseline (mean MAE 0.2372 vs 0.1866); displayed forecasts use the baseline.
+Deployed Seasonal naive forecasts: 2026 Q3 4.177 [4.001, 4.427], 2026 Q4 4.208 [4.032, 4.457], 2027 Q1 5.515 [5.339, 5.765], 2027 Q2 5.353 [5.177, 5.602]
+Deployed Ridge forecasts: 2026 Q3 4.752 [4.474, 5.083], 2026 Q4 4.646 [4.378, 4.904], 2027 Q1 5.316 [5.062, 5.555], 2027 Q2 5.332 [5.066, 5.559]
+Deployed Random Forest forecasts: 2026 Q3 4.214 [4.043, 4.484], 2026 Q4 4.216 [4.050, 4.485], 2027 Q1 5.067 [4.904, 5.324], 2027 Q2 5.073 [4.893, 5.331]
+
+Dataset version 1 (new); runs {'Seasonal naive': 1, 'Ridge': 2, 'Random Forest': 3}
+== DATABASE CHECK ==
+  integrity_check: ok; foreign_key_check problems: 0
+  source_files: 2 rows
+  dataset_versions: 1 rows
+  observations: 840 rows
+  model_runs: 3 rows
+  model_metrics: 24 rows
+  forecasts: 696 rows
+  deployed runs: Seasonal naive run 1, Ridge run 2, Random Forest run 3
+  trace of displayed 'future' h1 forecast 229: model Seasonal naive run 1 dataset 1 production sha 64c7fa55c5eb07fc... area sha e294c79f82e2ae2c...
+  file size: 236 KB
