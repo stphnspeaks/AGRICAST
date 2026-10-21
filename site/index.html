@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en" data-theme="forest">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AgriCast - Pampanga Rice Yield Forecasts</title>
+  <meta name="description" content="Rice (palay) yield forecasts and PSA analytics for Pampanga province.">
+  <meta name="theme-color" content="#061f1f">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%230e2d28'/%3E%3Cpath d='M16 26V10M16 14c-4 0-6-2-6-6 4 0 6 2 6 6zm0 5c4 0 6-2 6-6-4 0-6 2-6 6z' stroke='%238eb69b' stroke-width='2.4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" href="vendor/sql-wasm.wasm" as="fetch" type="application/wasm" crossorigin>
+  <link rel="preload" href="data/agricast.db" as="fetch" crossorigin>
+  <!-- fonts load without blocking the first paint -->
+  <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Montserrat:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="css/theme.css">
+  <link rel="stylesheet" href="css/app.css">
+  <script>
+    // Apply saved theme before first paint so there is no flash.
+    try {
+      const s = JSON.parse(localStorage.getItem('agricast.settings') || '{}');
+      const r = document.documentElement;
+      if (s.theme) r.dataset.theme = s.theme;
+      if (s.light) r.dataset.mode = 'light';
+      if (s.reduceMotion) r.dataset.motion = 'reduced';
+      if (localStorage.getItem('agricast.sidebar') === 'collapsed') r.dataset.sidebar = 'collapsed';
+    } catch (e) {}
+  </script>
+</head>
+<body>
+  <div class="bg" aria-hidden="true">
+    <i class="blob b1"></i><i class="blob b2"></i><i class="blob b3"></i>
+    <div class="grain"></div>
+  </div>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <div class="app">
+    <aside class="sidebar" aria-label="Primary">
+      <a class="logo" href="#/hub" aria-label="AgriCast home">
+        <svg viewBox="0 0 32 32" width="34" height="34" aria-hidden="true"><path d="M16 28V9M16 14c-5 0-7-2.5-7-7 5 0 7 2.5 7 7zm0 6c5 0 7-2.5 7-7-5 0-7 2.5-7 7z" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round"/></svg>
+        <span class="logo-text">Agri<b>Cast</b></span>
+      </a>
+      <nav id="sideNav" class="nav"></nav>
+      <p class="side-foot">Pampanga · PSA data</p>
+    </aside>
+
+    <div class="main-col">
+      <header class="topbar">
+        <button id="menuBtn" class="icon-btn" aria-label="Collapse or expand sidebar" aria-pressed="false"></button>
+        <button id="searchBtn" class="search" aria-label="Search tabs, years, quarters (Ctrl K)">
+          <span id="searchIcon"></span><span class="search-text">Search tabs, years, quarters</span><kbd>Ctrl K</kbd>
+        </button>
+      </header>
+      <main id="main" tabindex="-1" aria-live="polite"></main>
+    </div>
+  </div>
+
+  <nav id="dock" class="dock" aria-label="Primary mobile"></nav>
+
+  <dialog id="palette" aria-label="Command palette">
+    <input id="paletteInput" type="text" placeholder="Jump to a tab, year or quarter..." autocomplete="off" aria-label="Search">
+    <ul id="paletteList" role="listbox"></ul>
+    <p class="palette-hint">Up/Down to move · Enter to open · Esc to close</p>
+  </dialog>
+
+  <div id="toasts" role="status" aria-live="polite"></div>
+
+  <script src="vendor/chart.umd.js"></script>
+  <script src="vendor/sql-wasm.js"></script>
+  <script type="module" src="js/main.js"></script>
+  <noscript><p style="padding:2rem;color:#dcefe0">AgriCast needs JavaScript to read its database.</p></noscript>
+</body>
+</html>

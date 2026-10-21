@@ -1,0 +1,55 @@
+/* Theme variables. AgriTune switches data-theme (preset) and data-mode (light). */
+:root {
+  --bg-a: #061f1f; --bg-b: #0e2d28; --bg-c: #163430;
+  --accent: #8eb69b;        /* buttons, highlights */
+  --accent-ink: #06201a;    /* text on accent */
+  --sage: #8ea693;
+  --mint: #dcefe0;          /* logo + headings */
+  --text: #e4f2e7;
+  --text-dim: #aac3b2;
+  --glass: rgba(255, 255, 255, 0.07);
+  --glass-border: rgba(255, 255, 255, 0.16);
+  --glass-edge: rgba(255, 255, 255, 0.34);
+  --shadow: 0 18px 50px rgba(0, 0, 0, 0.32);
+  --blob-1: #2f7d5b; --blob-2: #1f6f78; --blob-3: #8eb69b;
+  --pred: #f2c879;          /* predicted series */
+  --bad: #f09a8a;
+  --grid: rgba(255, 255, 255, 0.09);
+}
+[data-theme="ocean"] {
+  --bg-a: #04202a; --bg-b: #0a2f3b; --bg-c: #124350;
+  --accent: #7fc4c9; --accent-ink: #04222a; --sage: #86a9ad; --mint: #d9f1f2;
+  --text: #e1f3f4; --text-dim: #a5c5c9;
+  --blob-1: #1f8a96; --blob-2: #2b5fa0; --blob-3: #7fc4c9;
+  --pred: #f4cf86;
+}
+[data-theme="sunset"] {
+  --bg-a: #231108; --bg-b: #3a1d0e; --bg-c: #4c2a14;
+  --accent: #e8b26a; --accent-ink: #2a1505; --sage: #c3a27e; --mint: #fbe9d0;
+  --text: #fbeedd; --text-dim: #d1b99b;
+  --blob-1: #b4531f; --blob-2: #8a3b3b; --blob-3: #e8b26a;
+  --pred: #8fd3c0;
+}
+[data-theme="slate"] {
+  --bg-a: #0f141b; --bg-b: #18202b; --bg-c: #222c3a;
+  --accent: #9db4d1; --accent-ink: #0d1520; --sage: #94a3b8; --mint: #e2e8f0;
+  --text: #e8edf4; --text-dim: #aab6c6;
+  --blob-1: #3d5a80; --blob-2: #4a4e8a; --blob-3: #9db4d1;
+  --pred: #f2c879;
+}
+
+/* Light mode: same hue family, pale background, dark text. */
+[data-mode="light"] {
+  --bg-a: #eef6f0; --bg-b: #e1efe5; --bg-c: #d3e6d9;
+  --accent: #2f6f4e; --accent-ink: #ffffff; --sage: #4b6b57; --mint: #15392b;
+  --text: #17302a; --text-dim: #44594e;
+  --glass: rgba(255, 255, 255, 0.62);
+  --glass-border: rgba(255, 255, 255, 0.9);
+  --glass-edge: rgba(255, 255, 255, 1);
+  --shadow: 0 14px 40px rgba(20, 60, 40, 0.14);
+  --pred: #b0680f; --bad: #b3402f; --grid: rgba(0, 0, 0, 0.09);
+  --blob-1: #9fd3b4; --blob-2: #a8d6dc; --blob-3: #cfe6a8;
+}
+[data-mode="light"][data-theme="ocean"] { --bg-a:#edf7f8; --bg-b:#dcf0f2; --bg-c:#cbe6ea; --accent:#1f6c78; --mint:#0f3a42; --text:#13333a; --text-dim:#43595e; }
+[data-mode="light"][data-theme="sunset"] { --bg-a:#fbf3e8; --bg-b:#f6e6d0; --bg-c:#f0d9b9; --accent:#9a4f12; --mint:#4a2308; --text:#3a1f0d; --text-dim:#6a503a; --pred:#1d6f5c; }
+[data-mode="light"][data-theme="slate"] { --bg-a:#f1f4f8; --bg-b:#e3e9f1; --bg-c:#d5dde9; --accent:#33527a; --mint:#1b2a40; --text:#1c2736; --text-dim:#4a5666; }
